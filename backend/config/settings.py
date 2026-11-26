@@ -79,6 +79,7 @@ TIME_ZONE = "Asia/Kolkata"
 USE_I18N = True
 USE_TZ = True
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "accounts.User"
 AUTHENTICATION_BACKENDS = ["accounts.backends.EmailBackend"]
@@ -110,6 +111,8 @@ AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
 AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME", "aadme-lms")
 AWS_S3_ENDPOINT_URL = os.environ.get("AWS_S3_ENDPOINT_URL", "")
 AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "ap-south-1")
-LMS_USE_LOCAL_STORAGE = os.environ.get("LMS_USE_LOCAL_STORAGE", "1") == "1"
+_default_local_storage = "1" if DEBUG else "0"
+LMS_USE_LOCAL_STORAGE = os.environ.get("LMS_USE_LOCAL_STORAGE", _default_local_storage) == "1"
+AWS_S3_ADDRESSING_STYLE = os.environ.get("AWS_S3_ADDRESSING_STYLE", "")
 MEDIA_ROOT = BASE_DIR / "media"
 MEDIA_URL = "/media/"

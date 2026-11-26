@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    StudentAssetDownload,
     StudentEnrollmentList,
     StudentLessonComplete,
     StudentLessonDetail,
@@ -12,4 +13,5 @@ urlpatterns = [
     path("programs/<int:program_id>/", StudentProgramDetail.as_view()),
     path("lessons/<int:lesson_id>/", StudentLessonDetail.as_view()),
     path("lessons/<int:lesson_id>/complete/", StudentLessonComplete.as_view()),
+    path("assets/<int:asset_id>/download/", StudentAssetDownload.as_view()),
 ]

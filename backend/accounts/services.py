@@ -10,6 +10,7 @@ INVITE_TTL_HOURS = 72
 
 
 def create_and_send_invite(user) -> InviteToken:
+    InviteToken.objects.filter(user=user, used_at__isnull=True).delete()
     invite = InviteToken.objects.create(
         user=user,
         token=InviteToken.generate_token(),

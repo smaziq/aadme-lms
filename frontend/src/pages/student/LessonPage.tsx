@@ -6,6 +6,7 @@ import {
   type LessonCompletion,
   type StudentLessonDetail,
 } from "../../api/student";
+import { apiDownload } from "../../api/client";
 import { formatApiError, useAuth } from "../../auth/AuthContext";
 import { StudentShell } from "../../components/StudentShell";
 
@@ -144,14 +145,16 @@ export function LessonPage() {
               <ul className="asset-list">
                 {lesson.assets.map((asset) => (
                   <li key={asset.id}>
-                    <a
-                      href={asset.download_url}
-                      download={asset.filename}
-                      target="_blank"
-                      rel="noreferrer"
+                    <button
+                      type="button"
+                      className="link-button"
+                      onClick={() => {
+                        if (!token) return;
+                        void apiDownload(asset.download_url, token, asset.filename);
+                      }}
                     >
                       {asset.filename}
-                    </a>
+                    </button>
                     <span className="muted list-meta">
                       {" "}
                       ({asset.content_type}, {asset.size} bytes)

@@ -21,7 +21,7 @@ def admin_api(settings):
     return api
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_admin_creates_student_and_sends_invite(admin_api):
     res = admin_api.post(
         "/api/admin/students/",
@@ -77,6 +77,27 @@ def test_duplicate_active_enrollment_returns_400(admin_api):
     payload = {"student_id": st["id"], "program_id": program.id}
     assert admin_api.post("/api/admin/enrollments/", payload, format="json").status_code == 201
     assert admin_api.post("/api/admin/enrollments/", payload, format="json").status_code == 400
+
+
+@pytest.mark.django_db
+def test_admin_lists_enrollments_with_progress(admin_api):
+    st = admin_api.post(
+        "/api/admin/students/", {"email": "list@example.com", "full_name": "Lister"}, format="json"
+    ).data
+    program = Program.objects.create(title="P", slug="p", is_published=True)
+    module = Module.objects.create(program=program, title="M", order=1)
+    Lesson.objects.create(module=module, title="L1", order=1, is_published=True)
+    admin_api.post(
+        "/api/admin/enrollments/",
+        {"student_id": st["id"], "program_id": program.id},
+        format="json",
+    )
+    res = admin_api.get("/api/admin/enrollments/")
+    assert res.status_code == 200
+    assert len(res.data) >= 1
+    row = next(r for r in res.data if r["student_email"] == "list@example.com")
+    assert row["program_title"] == "P"
+    assert row["progress"]["total"] == 1
 
 
 @pytest.mark.django_db

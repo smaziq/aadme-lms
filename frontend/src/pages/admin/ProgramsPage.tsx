@@ -1,6 +1,11 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { createProgram, listPrograms, type Program } from "../../api/admin";
+import {
+  createProgram,
+  listPrograms,
+  patchProgram,
+  type Program,
+} from "../../api/admin";
 import { formatApiError, useAuth } from "../../auth/AuthContext";
 import { AdminShell } from "../../components/AdminShell";
 
@@ -49,7 +54,7 @@ export function ProgramsPage() {
         title: title.trim(),
         slug: slug.trim() || slugify(title),
         description: description.trim(),
-        is_published: true,
+        is_published: false,
       });
       setPrograms((prev) => (prev ? [created, ...prev] : [created]));
       setTitle("");
@@ -138,9 +143,25 @@ export function ProgramsPage() {
                     · /{p.slug} · {p.is_published ? "published" : "draft"}
                   </span>
                 </div>
-                <Link className="btn-secondary btn-small" to={`/admin/programs/${p.id}`}>
-                  Manage
-                </Link>
+                <div className="row-actions">
+                  <button
+                    type="button"
+                    className="btn-secondary btn-small"
+                    onClick={() =>
+                      void patchProgram(token!, p.id, { is_published: !p.is_published }).then(
+                        (updated) =>
+                          setPrograms((prev) =>
+                            prev?.map((row) => (row.id === updated.id ? updated : row)) ?? prev,
+                          ),
+                      )
+                    }
+                  >
+                    {p.is_published ? "Unpublish" : "Publish"}
+                  </button>
+                  <Link className="btn-secondary btn-small" to={`/admin/programs/${p.id}`}>
+                    Manage
+                  </Link>
+                </div>
               </li>
             ))}
           </ul>

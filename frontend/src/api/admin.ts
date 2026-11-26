@@ -58,6 +58,18 @@ export type EnrollmentProgress = {
   percent: number;
 };
 
+export type AdminEnrollmentRow = {
+  id: number;
+  student_id: number;
+  student_name: string;
+  student_email: string;
+  program_id: number;
+  program_title: string;
+  status: string;
+  created_at: string;
+  progress: EnrollmentProgress;
+};
+
 export function listPrograms(token: string) {
   return apiRequest<Program[]>("/api/admin/programs/", { token });
 }
@@ -68,6 +80,30 @@ export function createProgram(
 ) {
   return apiRequest<Program>("/api/admin/programs/", {
     method: "POST",
+    token,
+    body,
+  });
+}
+
+export function patchProgram(
+  token: string,
+  programId: number,
+  body: Partial<Pick<Program, "title" | "is_published" | "description">>,
+) {
+  return apiRequest<Program>(`/api/admin/programs/${programId}/`, {
+    method: "PATCH",
+    token,
+    body,
+  });
+}
+
+export function patchLesson(
+  token: string,
+  lessonId: number,
+  body: Partial<Pick<Lesson, "title" | "is_published">>,
+) {
+  return apiRequest<Lesson>(`/api/admin/lessons/${lessonId}/`, {
+    method: "PATCH",
     token,
     body,
   });
@@ -139,6 +175,17 @@ export function createEnrollment(
 
 export function getEnrollmentProgress(token: string, enrollmentId: number) {
   return apiRequest<EnrollmentProgress>(`/api/admin/enrollments/${enrollmentId}/progress/`, {
+    token,
+  });
+}
+
+export function listEnrollments(token: string) {
+  return apiRequest<AdminEnrollmentRow[]>("/api/admin/enrollments/", { token });
+}
+
+export function resendStudentInvite(token: string, studentId: number) {
+  return apiRequest<{ detail: string }>(`/api/admin/students/${studentId}/resend-invite/`, {
+    method: "POST",
     token,
   });
 }

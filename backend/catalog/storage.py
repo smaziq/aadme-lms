@@ -28,13 +28,19 @@ class StorageService:
 
     def _s3_client(self):
         import boto3
+        from botocore.config import Config
 
+        extra_kwargs = {}
+        style = getattr(settings, "AWS_S3_ADDRESSING_STYLE", "") or ""
+        if style == "path":
+            extra_kwargs["config"] = Config(s3={"addressing_style": "path"})
         return boto3.client(
             "s3",
             endpoint_url=settings.AWS_S3_ENDPOINT_URL or None,
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
             region_name=settings.AWS_S3_REGION_NAME,
+            **extra_kwargs,
         )
 
     def put_bytes(self, key: str, data: bytes, content_type: str) -> None:

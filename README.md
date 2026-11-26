@@ -56,6 +56,19 @@ cd backend && source .venv/bin/activate && pytest -v
 
 Tests use SQLite and local filesystem storage (`LMS_USE_LOCAL_STORAGE`); they do not require Postgres or Supabase.
 
+### Production checklist
+
+- Set `DJANGO_DEBUG=0` and a strong `DJANGO_SECRET_KEY`
+- Configure `DATABASE_URL` (Postgres; `psycopg` is in `requirements.txt`)
+- Set `LMS_USE_LOCAL_STORAGE=0` and provide `AWS_*` vars for S3-compatible storage (optional `AWS_S3_ADDRESSING_STYLE=path` for Supabase)
+- Restrict `CORS_ALLOWED_ORIGINS` and `DJANGO_ALLOWED_HOSTS`
+- Run `python manage.py collectstatic` (`STATIC_ROOT` is `backend/staticfiles`)
+- Deploy API with gunicorn; serve the SPA build with your web server
+
+### Student asset downloads
+
+Lesson files are streamed from `GET /api/me/assets/{id}/download/` with the student token (works for local storage and S3). The student UI uses this endpoint instead of raw `local://` URLs.
+
 ## Environment variables
 
 Copy examples from the repo root, `backend/.env.example`, and `frontend/.env.example`.

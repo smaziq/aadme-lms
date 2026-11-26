@@ -18,6 +18,32 @@ def admin_api():
 
 
 @pytest.mark.django_db
+def test_admin_patches_program_and_lesson_publish(admin_api):
+    prog = admin_api.post(
+        "/api/admin/programs/", {"title": "P", "slug": "p", "is_published": False}, format="json"
+    ).data
+    assert prog["is_published"] is False
+    patched = admin_api.patch(
+        f"/api/admin/programs/{prog['id']}/", {"is_published": True}, format="json"
+    )
+    assert patched.status_code == 200
+    assert patched.data["is_published"] is True
+    mod = admin_api.post(
+        f"/api/admin/programs/{prog['id']}/modules/", {"title": "M", "order": 1}, format="json"
+    ).data
+    lesson = admin_api.post(
+        f"/api/admin/modules/{mod['id']}/lessons/",
+        {"title": "L", "order": 1, "body": "", "is_published": False},
+        format="json",
+    ).data
+    lp = admin_api.patch(
+        f"/api/admin/lessons/{lesson['id']}/", {"is_published": True}, format="json"
+    )
+    assert lp.status_code == 200
+    assert lp.data["is_published"] is True
+
+
+@pytest.mark.django_db
 def test_admin_creates_program_tree(admin_api):
     res = admin_api.post("/api/admin/programs/", {"title": "P", "slug": "p", "description": "", "is_published": True}, format="json")
     assert res.status_code == 201

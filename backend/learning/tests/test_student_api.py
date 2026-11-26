@@ -140,6 +140,43 @@ def test_paused_enrollment_cannot_access_program_or_lesson():
 
 
 @pytest.mark.django_db
+def test_unpublished_program_hidden_from_student():
+    api, student = student_client("a@example.com", "A")
+    p = Program.objects.create(title="Draft", slug="draft", is_published=False)
+    Enrollment.objects.create(student=student, program=p, status="active")
+    assert api.get("/api/me/enrollments/").json() == []
+    assert api.get(f"/api/me/programs/{p.id}/").status_code == 404
+
+
+@pytest.mark.django_db
+def test_asset_download_requires_enrollment(settings, tmp_path):
+    settings.LMS_USE_LOCAL_STORAGE = True
+    settings.MEDIA_ROOT = tmp_path
+    api, student = student_client("a@example.com", "A")
+    p = Program.objects.create(title="P", slug="p", is_published=True)
+    Enrollment.objects.create(student=student, program=p, status="active")
+    m = Module.objects.create(program=p, title="M", order=1)
+    lesson = Lesson.objects.create(module=m, title="L", order=1, is_published=True)
+    key = f"lessons/{p.id}/{lesson.id}/file.pdf"
+    path = tmp_path / key
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"%PDF-test")
+    asset = LessonAsset.objects.create(
+        lesson=lesson,
+        storage_key=key,
+        filename="file.pdf",
+        content_type="application/pdf",
+        size=9,
+    )
+    detail = api.get(f"/api/me/lessons/{lesson.id}/")
+    assert detail.data["assets"][0]["download_url"] == f"/api/me/assets/{asset.id}/download/"
+    res = api.get(f"/api/me/assets/{asset.id}/download/")
+    assert res.status_code == 200
+    body = b"".join(res.streaming_content)
+    assert body == b"%PDF-test"
+
+
+@pytest.mark.django_db
 def test_cross_student_cannot_read_program_tree():
     api, student = student_client("a@example.com", "A")
     other_api, _ = student_client("b@example.com", "B")

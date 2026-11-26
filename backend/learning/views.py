@@ -1,3 +1,8 @@
+import io
+import mimetypes
+
+from django.db.models import Prefetch
+from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
@@ -7,10 +12,12 @@ from rest_framework.views import APIView
 from accounts.models import Student
 from accounts.permissions import IsAdminRole, IsStudentRole
 from accounts.services import create_and_send_invite
-from catalog.models import Lesson, Program
+from catalog.models import Lesson, LessonAsset, Module, Program
+from catalog.storage import StorageService
 from learning.models import Enrollment, LessonCompletion
 from learning.serializers import (
     AdminCreateStudentSerializer,
+    AdminEnrollmentListSerializer,
     AdminEnrollmentCreateSerializer,
     LessonCompletionSerializer,
     StudentEnrollmentSerializer,
@@ -34,8 +41,19 @@ class AdminStudentResendInvite(AdminPermissionMixin, APIView):
         return Response({"detail": "Invite sent."})
 
 
-class AdminEnrollmentCreate(AdminPermissionMixin, generics.CreateAPIView):
+class AdminEnrollmentListCreate(AdminPermissionMixin, generics.ListCreateAPIView):
     serializer_class = AdminEnrollmentCreateSerializer
+
+    def get_serializer_class(self):
+        if self.request.method == "GET":
+            return AdminEnrollmentListSerializer
+        return AdminEnrollmentCreateSerializer
+
+    def get_queryset(self):
+        return (
+            Enrollment.objects.select_related("student__user", "program")
+            .order_by("-created_at")
+        )
 
 
 class AdminEnrollmentProgress(AdminPermissionMixin, APIView):
@@ -77,9 +95,28 @@ def _lesson_for_student(student, lesson_id: int):
     )
     if lesson is None or not lesson.is_published:
         return None
-    if _active_enrollment(student, lesson.module.program_id) is None:
+    program = lesson.module.program
+    if not program.is_published:
+        return None
+    if _active_enrollment(student, program.id) is None:
         return None
     return lesson
+
+
+def _asset_for_student(student, asset_id: int):
+    asset = (
+        LessonAsset.objects.select_related("lesson__module__program")
+        .filter(pk=asset_id)
+        .first()
+    )
+    if asset is None:
+        return None
+    lesson = asset.lesson
+    if not lesson.is_published or not lesson.module.program.is_published:
+        return None
+    if _active_enrollment(student, lesson.module.program_id) is None:
+        return None
+    return asset
 
 
 class StudentEnrollmentList(StudentPermissionMixin, generics.ListAPIView):
@@ -88,7 +125,11 @@ class StudentEnrollmentList(StudentPermissionMixin, generics.ListAPIView):
     def get_queryset(self):
         student = _student_profile(self.request)
         return (
-            Enrollment.objects.filter(student=student, status=Enrollment.Status.ACTIVE)
+            Enrollment.objects.filter(
+                student=student,
+                status=Enrollment.Status.ACTIVE,
+                program__is_published=True,
+            )
             .select_related("program")
             .order_by("-created_at")
         )
@@ -99,8 +140,18 @@ class StudentProgramDetail(StudentPermissionMixin, APIView):
         student = _student_profile(request)
         if _active_enrollment(student, program_id) is None:
             return Response(status=status.HTTP_404_NOT_FOUND)
+        published_lessons = Lesson.objects.filter(is_published=True).order_by("order")
         program = get_object_or_404(
-            Program.objects.prefetch_related("modules__lessons"), pk=program_id
+            Program.objects.prefetch_related(
+                Prefetch(
+                    "modules",
+                    queryset=Module.objects.order_by("order").prefetch_related(
+                        Prefetch("lessons", queryset=published_lessons)
+                    ),
+                )
+            ),
+            pk=program_id,
+            is_published=True,
         )
         return Response(StudentProgramTreeSerializer(program).data)
 
@@ -126,3 +177,22 @@ class StudentLessonComplete(StudentPermissionMixin, APIView):
             student=student, lesson=lesson
         )
         return Response(LessonCompletionSerializer(completion).data)
+
+
+class StudentAssetDownload(StudentPermissionMixin, APIView):
+    def get(self, request, asset_id):
+        student = _student_profile(request)
+        asset = _asset_for_student(student, asset_id)
+        if asset is None:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        try:
+            data = StorageService().get_bytes(asset.storage_key)
+        except (FileNotFoundError, OSError):
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        content_type = asset.content_type or mimetypes.guess_type(asset.filename)[0] or "application/octet-stream"
+        return FileResponse(
+            io.BytesIO(data),
+            content_type=content_type,
+            as_attachment=True,
+            filename=asset.filename,
+        )

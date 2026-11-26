@@ -4,6 +4,8 @@ import {
   createLesson,
   createModule,
   listLessons,
+  patchLesson,
+  patchProgram,
   listModules,
   listPrograms,
   uploadLessonAsset,
@@ -154,7 +156,7 @@ export function ProgramDetailPage() {
         order: draft.order,
         body: draft.body,
         links: [],
-        is_published: true,
+        is_published: false,
       });
       setModules((prev) =>
         prev?.map((m) =>
@@ -227,6 +229,24 @@ export function ProgramDetailPage() {
 
       {program && modules !== null && (
         <>
+          <section className="admin-section admin-card">
+            <p className="muted">
+              Status:{" "}
+              <strong>{program.is_published ? "Published" : "Draft"}</strong>
+            </p>
+            <button
+              type="button"
+              className="btn-secondary btn-small"
+              onClick={() =>
+                void patchProgram(token!, program.id, {
+                  is_published: !program.is_published,
+                }).then((updated) => setProgram(updated))
+              }
+            >
+              {program.is_published ? "Unpublish program" : "Publish program"}
+            </button>
+          </section>
+
           <section className="admin-section">
             <h2 className="section-title">Add module</h2>
             {moduleError && (
@@ -282,10 +302,31 @@ export function ProgramDetailPage() {
                         title={lesson.title}
                         body={lesson.body}
                         id={lesson.id}
+                        isPublished={lesson.is_published}
                         assets={assetsByLesson[lesson.id] ?? []}
                         uploading={uploadingLesson === lesson.id}
                         uploadError={uploadErrors[lesson.id]}
                         onUpload={(file) => void handleUpload(lesson.id, file)}
+                        onTogglePublish={() => {
+                          if (!token) return;
+                          void patchLesson(token, lesson.id, {
+                            is_published: !lesson.is_published,
+                          }).then((updated) => {
+                            setModules(
+                              (prev) =>
+                                prev?.map((m) =>
+                                  m.id === mod.id
+                                    ? {
+                                        ...m,
+                                        lessons: m.lessons.map((l) =>
+                                          l.id === updated.id ? updated : l,
+                                        ),
+                                      }
+                                    : m,
+                                ) ?? prev,
+                            );
+                          });
+                        }}
                       />
                     </li>
                   ))}
@@ -314,24 +355,33 @@ function LessonRow({
   title,
   body,
   id,
+  isPublished,
   assets,
   uploading,
   uploadError,
   onUpload,
+  onTogglePublish,
 }: {
   title: string;
   body: string;
   id: number;
+  isPublished: boolean;
   assets: LessonAsset[];
   uploading: boolean;
   uploadError?: string;
   onUpload: (file: File | undefined) => void;
+  onTogglePublish: () => void;
 }) {
   return (
     <>
       <div className="lesson-head">
         <strong>{title}</strong>
-        <span className="muted">#{id}</span>
+        <span className="muted">
+          #{id} · {isPublished ? "published" : "draft"}
+        </span>
+        <button type="button" className="btn-secondary btn-small" onClick={onTogglePublish}>
+          {isPublished ? "Unpublish" : "Publish"}
+        </button>
       </div>
       {body && <p className="lesson-body muted">{body}</p>}
       {assets.length > 0 && (

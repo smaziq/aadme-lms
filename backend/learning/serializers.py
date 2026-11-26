@@ -1,11 +1,11 @@
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError, transaction
 from rest_framework import serializers
 
 from accounts.models import Student
 from accounts.serializers import StudentSerializer
 from accounts.services import create_and_send_invite
 from catalog.models import Batch, Lesson, LessonAsset, Module, Program
-from catalog.storage import StorageService
 from learning.models import Enrollment, LessonCompletion
 
 User = get_user_model()
@@ -17,21 +17,23 @@ class AdminCreateStudentSerializer(serializers.Serializer):
     phone = serializers.CharField(max_length=32, required=False, allow_blank=True, default="")
 
     def validate_email(self, value):
-        if User.objects.filter(email=value).exists():
+        email = value.strip().lower()
+        if User.objects.filter(email=email).exists():
             raise serializers.ValidationError("A user with this email already exists.")
-        return value
+        return email
 
     def create(self, validated_data):
         email = validated_data["email"]
-        user = User(email=email, role=User.Role.STUDENT)
-        user.set_unusable_password()
-        user.save()
-        student = Student.objects.create(
-            user=user,
-            full_name=validated_data["full_name"],
-            phone=validated_data.get("phone", ""),
-        )
-        create_and_send_invite(user)
+        with transaction.atomic():
+            user = User(email=email, role=User.Role.STUDENT)
+            user.set_unusable_password()
+            user.save()
+            student = Student.objects.create(
+                user=user,
+                full_name=validated_data["full_name"],
+                phone=validated_data.get("phone", ""),
+            )
+            transaction.on_commit(lambda: create_and_send_invite(user))
         return student
 
     def to_representation(self, instance):
@@ -68,7 +70,36 @@ class AdminEnrollmentCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data.setdefault("status", Enrollment.Status.ACTIVE)
-        return super().create(validated_data)
+        try:
+            return super().create(validated_data)
+        except IntegrityError:
+            raise serializers.ValidationError(
+                "Active enrollment already exists for this student and program."
+            )
+
+
+class AdminEnrollmentListSerializer(serializers.ModelSerializer):
+    student_name = serializers.CharField(source="student.full_name", read_only=True)
+    student_email = serializers.EmailField(source="student.user.email", read_only=True)
+    program_title = serializers.CharField(source="program.title", read_only=True)
+    progress = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Enrollment
+        fields = (
+            "id",
+            "student_id",
+            "student_name",
+            "student_email",
+            "program_id",
+            "program_title",
+            "status",
+            "created_at",
+            "progress",
+        )
+
+    def get_progress(self, enrollment):
+        return progress_for_student_program(enrollment.student, enrollment.program_id)
 
 
 def progress_for_student_program(student, program_id: int) -> dict:
@@ -133,7 +164,7 @@ class StudentLessonAssetSerializer(serializers.ModelSerializer):
         fields = ("id", "filename", "content_type", "size", "download_url")
 
     def get_download_url(self, asset):
-        return StorageService().presign_download(asset.storage_key)
+        return f"/api/me/assets/{asset.id}/download/"
 
 
 class StudentLessonDetailSerializer(serializers.ModelSerializer):

@@ -4,7 +4,10 @@ import {
   createEnrollment,
   createStudent,
   getEnrollmentProgress,
+  listEnrollments,
   listPrograms,
+  resendStudentInvite,
+  type AdminEnrollmentRow,
   type Enrollment,
   type EnrollmentProgress,
   type Program,
@@ -28,6 +31,9 @@ export function EnrollPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [lastEnrollment, setLastEnrollment] = useState<Enrollment | null>(null);
   const [progress, setProgress] = useState<EnrollmentProgress | null>(null);
+  const [enrollments, setEnrollments] = useState<AdminEnrollmentRow[] | null>(null);
+  const [enrollmentsError, setEnrollmentsError] = useState<string | null>(null);
+  const [resendingStudentId, setResendingStudentId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -53,6 +59,40 @@ export function EnrollPage() {
       cancelled = true;
     };
   }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    const authToken = token;
+    let cancelled = false;
+    async function loadEnrollments() {
+      setEnrollmentsError(null);
+      try {
+        const rows = await listEnrollments(authToken);
+        if (!cancelled) setEnrollments(rows);
+      } catch (err) {
+        if (!cancelled) {
+          setEnrollmentsError(formatApiError(err));
+          setEnrollments([]);
+        }
+      }
+    }
+    void loadEnrollments();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, lastEnrollment?.id]);
+
+  async function handleResendInvite(studentId: number) {
+    if (!token) return;
+    setResendingStudentId(studentId);
+    try {
+      await resendStudentInvite(token, studentId);
+    } catch (err) {
+      setSubmitError(formatApiError(err));
+    } finally {
+      setResendingStudentId(null);
+    }
+  }
 
   async function handleEnroll(e: FormEvent) {
     e.preventDefault();
@@ -195,6 +235,58 @@ export function EnrollPage() {
           </form>
         </section>
       )}
+
+      <section className="admin-section">
+        <h2 className="section-title">Enrollments</h2>
+        {enrollmentsError && (
+          <div className="alert alert-error" role="alert">
+            {enrollmentsError}
+          </div>
+        )}
+        {enrollments === null && <p className="muted">Loading enrollments…</p>}
+        {enrollments !== null && enrollments.length === 0 && (
+          <p className="muted">No enrollments yet.</p>
+        )}
+        {enrollments !== null && enrollments.length > 0 && (
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Program</th>
+                <th>Status</th>
+                <th>Progress</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {enrollments.map((row) => (
+                <tr key={row.id}>
+                  <td>
+                    {row.student_name}
+                    <br />
+                    <span className="muted">{row.student_email}</span>
+                  </td>
+                  <td>{row.program_title}</td>
+                  <td>{row.status}</td>
+                  <td>
+                    {row.progress.completed}/{row.progress.total} ({row.progress.percent}%)
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="btn-secondary btn-small"
+                      disabled={resendingStudentId === row.student_id}
+                      onClick={() => void handleResendInvite(row.student_id)}
+                    >
+                      {resendingStudentId === row.student_id ? "Sending…" : "Resend invite"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
 
       {lastEnrollment && (
         <section className="admin-section admin-card">

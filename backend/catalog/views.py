@@ -28,6 +28,12 @@ class AdminProgramListCreate(AdminPermissionMixin, generics.ListCreateAPIView):
     serializer_class = ProgramSerializer
 
 
+class AdminProgramDetail(AdminPermissionMixin, generics.RetrieveUpdateAPIView):
+    queryset = Program.objects.all()
+    serializer_class = ProgramSerializer
+    http_method_names = ["get", "patch", "head", "options"]
+
+
 class AdminProgramModuleListCreate(AdminPermissionMixin, generics.ListCreateAPIView):
     serializer_class = ModuleSerializer
 
@@ -48,6 +54,12 @@ class AdminModuleLessonListCreate(AdminPermissionMixin, generics.ListCreateAPIVi
     def perform_create(self, serializer):
         module = get_object_or_404(Module, pk=self.kwargs["module_id"])
         serializer.save(module=module)
+
+
+class AdminLessonDetail(AdminPermissionMixin, generics.RetrieveUpdateAPIView):
+    queryset = Lesson.objects.all()
+    serializer_class = LessonSerializer
+    http_method_names = ["get", "patch", "head", "options"]
 
 
 class AdminLessonAssetPresign(AdminPermissionMixin, APIView):
