@@ -1,5 +1,7 @@
 from pathlib import Path
 import os
+
+import dj_database_url
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -54,12 +56,23 @@ TEMPLATES = [
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+_sqlite_path = BASE_DIR / "db.sqlite3"
+_default_db = f"sqlite:///{_sqlite_path.as_posix()}"
+if os.environ.get("DATABASE_URL"):
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=_default_db,
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": _sqlite_path,
+        }
+    }
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Asia/Kolkata"
