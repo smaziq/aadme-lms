@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
 export function HomePage() {
@@ -50,10 +50,21 @@ export function HomePage() {
         <p className="lead">
           You are signed in as <strong>{user.email}</strong> ({user.role}).
         </p>
-        <p className="muted">
-          Admin and student course views will be available in the next tasks. For now,
-          use the API or Django admin for content management.
-        </p>
+        {user.role === "admin" ? (
+          <div className="admin-home-links">
+            <p className="lead">Admin tools</p>
+            <ul>
+              <li>
+                <Link to="/admin/programs">Manage programs &amp; lessons</Link>
+              </li>
+              <li>
+                <Link to="/admin/enroll">Enroll students</Link>
+              </li>
+            </ul>
+          </div>
+        ) : (
+          <p className="muted">Your enrolled courses will appear here in a future update.</p>
+        )}
       </main>
     </div>
   );

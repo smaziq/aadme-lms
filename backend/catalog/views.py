@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -89,5 +90,31 @@ class AdminLessonAssetComplete(AdminPermissionMixin, APIView):
             filename=data["filename"],
             content_type=data["content_type"],
             size=data["size"],
+        )
+        return Response(LessonAssetSerializer(asset).data, status=status.HTTP_201_CREATED)
+
+
+class AdminLessonAssetUpload(AdminPermissionMixin, APIView):
+    """Multipart upload: store bytes and create LessonAsset in one request (local/dev UX)."""
+
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, lesson_id):
+        lesson = get_object_or_404(Lesson, pk=lesson_id)
+        upload = request.FILES.get("file")
+        if upload is None:
+            return Response({"detail": "No file provided."}, status=status.HTTP_400_BAD_REQUEST)
+        program_id = lesson.module.program_id
+        filename = upload.name
+        content_type = upload.content_type or "application/octet-stream"
+        data = upload.read()
+        key = lesson_asset_key(program_id, lesson.id, filename)
+        StorageService().put_bytes(key, data, content_type)
+        asset = LessonAsset.objects.create(
+            lesson=lesson,
+            storage_key=key,
+            filename=filename,
+            content_type=content_type,
+            size=len(data),
         )
         return Response(LessonAssetSerializer(asset).data, status=status.HTTP_201_CREATED)

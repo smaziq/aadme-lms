@@ -199,3 +199,184 @@ a:hover {
   align-items: center;
   justify-content: center;
 }
+
+.admin-nav {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.9rem;
+}
+
+.admin-nav a {
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.admin-nav a:hover {
+  text-decoration: underline;
+}
+
+.admin-main {
+  max-width: 52rem;
+}
+
+.admin-section {
+  margin-top: 1.75rem;
+}
+
+.admin-section:first-child {
+  margin-top: 0.5rem;
+}
+
+.section-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+}
+
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.admin-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.admin-form input,
+.admin-form textarea,
+.admin-form select {
+  padding: 0.55rem 0.65rem;
+  border: 1px solid #c8cdd6;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.admin-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem 1rem;
+}
+
+.admin-form-grid .span-2 {
+  grid-column: span 2;
+}
+
+.admin-form-inline {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+}
+
+.admin-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #e2e4e9;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.admin-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e2e4e9;
+}
+
+.admin-list-item:last-child {
+  border-bottom: none;
+}
+
+.list-meta {
+  font-size: 0.85rem;
+}
+
+.btn-small {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.85rem;
+}
+
+.admin-card {
+  background: #fff;
+  border: 1px solid #e2e4e9;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+}
+
+.breadcrumb {
+  margin: -0.5rem 0 1rem;
+  font-size: 0.9rem;
+}
+
+.lesson-tree {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+}
+
+.lesson-row {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #eef0f3;
+}
+
+.lesson-row:last-child {
+  border-bottom: none;
+}
+
+.lesson-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.lesson-body {
+  margin: 0.35rem 0;
+  font-size: 0.9rem;
+}
+
+.asset-list {
+  margin: 0.25rem 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+}
+
+.file-upload input[type="file"] {
+  display: none;
+}
+
+.lesson-add {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e4e9;
+}
+
+.lesson-add .span-2 {
+  grid-column: span 2;
+}
+
+.alert-compact {
+  margin: 0.35rem 0;
+  padding: 0.4rem 0.55rem;
+}
+
+.checkbox-row {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.5rem !important;
+  font-weight: 500;
+}
+
+.admin-home-links ul {
+  padding-left: 1.25rem;
+}

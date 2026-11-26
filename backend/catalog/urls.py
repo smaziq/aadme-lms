@@ -3,6 +3,7 @@ from django.urls import path
 from .views import (
     AdminLessonAssetComplete,
     AdminLessonAssetPresign,
+    AdminLessonAssetUpload,
     AdminModuleLessonListCreate,
     AdminProgramListCreate,
     AdminProgramModuleListCreate,
@@ -14,4 +15,5 @@ urlpatterns = [
     path("modules/<int:module_id>/lessons/", AdminModuleLessonListCreate.as_view()),
     path("lessons/<int:lesson_id>/assets/presign/", AdminLessonAssetPresign.as_view()),
     path("lessons/<int:lesson_id>/assets/complete/", AdminLessonAssetComplete.as_view()),
+    path("lessons/<int:lesson_id>/assets/upload/", AdminLessonAssetUpload.as_view()),
 ]

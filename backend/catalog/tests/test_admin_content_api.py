@@ -1,5 +1,6 @@
 import pytest
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 from catalog.models import LessonAsset
@@ -116,3 +117,36 @@ def test_asset_complete_mismatched_storage_key_returns_400(admin_api, tmp_path, 
     )
     assert res.status_code == 400
     assert not LessonAsset.objects.filter(lesson_id=lesson["id"]).exists()
+
+
+@pytest.mark.django_db
+def test_asset_multipart_upload(admin_api, tmp_path, settings):
+    settings.LMS_USE_LOCAL_STORAGE = True
+    settings.MEDIA_ROOT = tmp_path
+    prog, lesson = _lesson_tree(admin_api)
+    res = admin_api.post(
+        f"/api/admin/lessons/{lesson['id']}/assets/upload/",
+        {
+            "file": SimpleUploadedFile(
+                "slide.pdf", b"%PDF-1.4", content_type="application/pdf"
+            )
+        },
+        format="multipart",
+    )
+    assert res.status_code == 201
+    assert res.data["filename"] == "slide.pdf"
+    assert res.data["size"] == 8
+    assert LessonAsset.objects.filter(lesson_id=lesson["id"], filename="slide.pdf").exists()
+
+
+@pytest.mark.django_db
+def test_asset_multipart_upload_requires_file(admin_api, tmp_path, settings):
+    settings.LMS_USE_LOCAL_STORAGE = True
+    settings.MEDIA_ROOT = tmp_path
+    _prog, lesson = _lesson_tree(admin_api)
+    res = admin_api.post(
+        f"/api/admin/lessons/{lesson['id']}/assets/upload/",
+        {},
+        format="multipart",
+    )
+    assert res.status_code == 400
