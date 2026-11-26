@@ -9,7 +9,18 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-insecure-change-me")
 DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"
-ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    if h.strip()
+]
+# Railway injects RAILWAY_PUBLIC_DOMAIN; allow it automatically in production.
+_railway_domain = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "").strip()
+if _railway_domain and _railway_domain not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(_railway_domain)
+if not DEBUG and "*" not in ALLOWED_HOSTS:
+    # Healthchecks may hit the private service hostname.
+    ALLOWED_HOSTS.extend([".railway.app", ".up.railway.app"])
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -28,6 +39,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -80,7 +92,44 @@ USE_I18N = True
 USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+# Vite production build lives at /app/frontend_dist in Docker; locally use frontend/dist
+FRONTEND_DIST_DIR = Path(
+    os.environ.get("FRONTEND_DIST_DIR", (BASE_DIR / "frontend_dist").as_posix())
+)
+if not FRONTEND_DIST_DIR.is_dir():
+    _alt = BASE_DIR.parent / "frontend" / "dist"
+    if _alt.is_dir():
+        FRONTEND_DIST_DIR = _alt
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        # Avoid Manifest hashing so missing map files cannot break collectstatic/boot.
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+    },
+}
+# Serve Vite assets (e.g. /assets/*) and index.html from the SPA build root.
+WHITENOISE_ROOT = str(FRONTEND_DIST_DIR) if FRONTEND_DIST_DIR.is_dir() else None
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+CSRF_TRUSTED_ORIGINS = [
+    o.strip()
+    for o in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
+    if o.strip()
+]
+if _railway_domain:
+    _origin = f"https://{_railway_domain}"
+    if _origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(_origin)
+
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # Railway healthchecks hit the container over HTTP; keep redirect off by default.
+    _ssl_default = "0" if os.environ.get("RAILWAY_ENVIRONMENT") else "1"
+    SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", _ssl_default) == "1"
 AUTH_USER_MODEL = "accounts.User"
 AUTHENTICATION_BACKENDS = ["accounts.backends.EmailBackend"]
 
