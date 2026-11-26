@@ -4,8 +4,9 @@ from rest_framework import serializers
 from accounts.models import Student
 from accounts.serializers import StudentSerializer
 from accounts.services import create_and_send_invite
-from catalog.models import Batch, Program
-from learning.models import Enrollment
+from catalog.models import Batch, Lesson, LessonAsset, Module, Program
+from catalog.storage import StorageService
+from learning.models import Enrollment, LessonCompletion
 
 User = get_user_model()
 
@@ -68,3 +69,83 @@ class AdminEnrollmentCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data.setdefault("status", Enrollment.Status.ACTIVE)
         return super().create(validated_data)
+
+
+def progress_for_student_program(student, program_id: int) -> dict:
+    published_lessons = Lesson.objects.filter(module__program_id=program_id, is_published=True)
+    total = published_lessons.count()
+    completed = LessonCompletion.objects.filter(
+        student=student, lesson__in=published_lessons
+    ).count()
+    percent = round((completed / total) * 100, 2) if total else 0
+    return {"completed": completed, "total": total, "percent": percent}
+
+
+class StudentProgramSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Program
+        fields = ("id", "title", "slug", "description")
+
+
+class StudentEnrollmentSerializer(serializers.ModelSerializer):
+    program = StudentProgramSummarySerializer(read_only=True)
+    progress = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Enrollment
+        fields = ("id", "status", "created_at", "program", "progress")
+
+    def get_progress(self, enrollment):
+        return progress_for_student_program(enrollment.student, enrollment.program_id)
+
+
+class StudentLessonSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Lesson
+        fields = ("id", "title", "order")
+
+
+class StudentModuleTreeSerializer(serializers.ModelSerializer):
+    lessons = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Module
+        fields = ("id", "title", "order", "lessons")
+
+    def get_lessons(self, module):
+        lessons = module.lessons.filter(is_published=True)
+        return StudentLessonSummarySerializer(lessons, many=True).data
+
+
+class StudentProgramTreeSerializer(serializers.ModelSerializer):
+    modules = StudentModuleTreeSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Program
+        fields = ("id", "title", "slug", "description", "modules")
+
+
+class StudentLessonAssetSerializer(serializers.ModelSerializer):
+    download_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = LessonAsset
+        fields = ("id", "filename", "content_type", "size", "download_url")
+
+    def get_download_url(self, asset):
+        return StorageService().presign_download(asset.storage_key)
+
+
+class StudentLessonDetailSerializer(serializers.ModelSerializer):
+    assets = StudentLessonAssetSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Lesson
+        fields = ("id", "title", "order", "body", "links", "assets")
+
+
+class LessonCompletionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LessonCompletion
+        fields = ("id", "lesson", "completed_at")
+        read_only_fields = fields
