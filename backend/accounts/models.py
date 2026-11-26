@@ -38,3 +38,13 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self) -> str:
         return self.email
+
+
+class Student(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="student_profile")
+    full_name = models.CharField(max_length=255)
+    phone = models.CharField(max_length=32, blank=True)
+    crm_person_id = models.CharField(max_length=64, null=True, blank=True, unique=True)
+
+    def __str__(self) -> str:
+        return self.full_name

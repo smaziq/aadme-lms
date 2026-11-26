@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
-from .models import User
+from .models import Student, User
 
 @admin.register(User)
 class UserAdmin(DjangoUserAdmin):
@@ -15,3 +15,9 @@ class UserAdmin(DjangoUserAdmin):
     )
     search_fields = ("email",)
     filter_horizontal = ("groups", "user_permissions")
+
+
+@admin.register(Student)
+class StudentAdmin(admin.ModelAdmin):
+    list_display = ("full_name", "user", "phone", "crm_person_id")
+    search_fields = ("full_name", "user__email", "crm_person_id")
