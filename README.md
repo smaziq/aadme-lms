@@ -67,6 +67,7 @@ Tests use SQLite and local filesystem storage (`LMS_USE_LOCAL_STORAGE`); they do
 - [ ] `DJANGO_ALLOWED_HOSTS` includes your Railway hostname (auto-added when `RAILWAY_PUBLIC_DOMAIN` is set)
 - [ ] `CSRF_TRUSTED_ORIGINS` / `CORS_ALLOWED_ORIGINS` include `https://<your-railway-domain>` (same-origin SPA can omit CORS; set for extra origins)
 - [ ] `FRONTEND_BASE_URL=https://<your-railway-domain>` so invite links point at production
+- [ ] `RESEND_API_KEY` (and a valid `DEFAULT_FROM_EMAIL`) so invite emails leave the console backend
 - [ ] Leave `VITE_API_BASE` empty so the SPA calls same-origin `/api`
 - [ ] Single Docker service builds the Vite SPA + runs gunicorn (see `Dockerfile` / `railway.toml`)
 - [ ] Start command runs migrations: `scripts/railway-start.sh` (`migrate` → `collectstatic` → gunicorn)
@@ -122,13 +123,15 @@ Copy examples from the repo root, `backend/.env.example`, and `frontend/.env.exa
 | `LMS_USE_LOCAL_STORAGE` | backend | Defaults to `1` when `DJANGO_DEBUG=1`, else `0`. `1` = local disk; `0` = S3-compatible (required in production) |
 | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_STORAGE_BUCKET_NAME`, `AWS_S3_ENDPOINT_URL`, `AWS_S3_REGION_NAME` | backend | Supabase Storage (S3-compatible) when `LMS_USE_LOCAL_STORAGE=0` |
 | `AWS_S3_ADDRESSING_STYLE` | backend | Use `path` for Supabase |
+| `RESEND_API_KEY` | backend | Resend API key; enables SMTP (`smtp.resend.com`) for invite emails. Omit locally → console backend |
+| `DEFAULT_FROM_EMAIL` | backend | From address (Resend: `onboarding@resend.dev` or a verified domain) |
 | `FRONTEND_BASE_URL` | backend | Base URL for invite/set-password links (production: your Railway HTTPS URL) |
 | `CORS_ALLOWED_ORIGINS` | backend | Comma-separated browser origins; same-origin SPA may leave default unused |
 | `CSRF_TRUSTED_ORIGINS` | backend | Comma-separated HTTPS origins; Railway domain auto-added from `RAILWAY_PUBLIC_DOMAIN` |
 | `DJANGO_ALLOWED_HOSTS` | backend | Hostnames; Railway public domain auto-added |
 | `VITE_API_BASE` | frontend | Optional API origin; leave empty for same-origin (Railway) or Vite proxy (dev) |
 
-Other backend knobs: `EMAIL_BACKEND`, `DEFAULT_FROM_EMAIL`, `SECURE_SSL_REDIRECT`, `FRONTEND_DIST_DIR`.
+Other backend knobs: `EMAIL_BACKEND` (override), `EMAIL_HOST` / `EMAIL_PORT` / `EMAIL_HOST_USER` / `EMAIL_HOST_PASSWORD` (generic SMTP), `SECURE_SSL_REDIRECT`, `FRONTEND_DIST_DIR`.
 
 ## Auth
 

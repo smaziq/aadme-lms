@@ -148,10 +148,31 @@ CORS_ALLOWED_ORIGINS = [
     if o.strip()
 ]
 
-EMAIL_BACKEND = os.environ.get(
-    "EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend"
-)
+# Email: console in local/dev; SMTP (Resend) when RESEND_API_KEY or EMAIL_HOST is set
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "lms@aadme.local")
+_resend_key = os.environ.get("RESEND_API_KEY", "").strip()
+_email_host = os.environ.get("EMAIL_HOST", "").strip()
+if os.environ.get("EMAIL_BACKEND"):
+    EMAIL_BACKEND = os.environ["EMAIL_BACKEND"]
+elif _resend_key or _email_host:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+# Resend SMTP defaults: https://resend.com/docs/send-with-smtp
+if _resend_key:
+    EMAIL_HOST = os.environ.get("EMAIL_HOST", "smtp.resend.com")
+    EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+    EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "1") == "1"
+    EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "resend")
+    EMAIL_HOST_PASSWORD = _resend_key
+elif _email_host:
+    EMAIL_HOST = _email_host
+    EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+    EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "1") == "1"
+    EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+    EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+
 FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "http://localhost:5173")
 
 # Storage (overridden in tests / production)
