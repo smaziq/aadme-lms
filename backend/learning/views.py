@@ -111,7 +111,9 @@ class StudentLessonDetail(StudentPermissionMixin, APIView):
         lesson = _lesson_for_student(student, lesson_id)
         if lesson is None:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        return Response(StudentLessonDetailSerializer(lesson).data)
+        return Response(
+            StudentLessonDetailSerializer(lesson, context={"student": student}).data
+        )
 
 
 class StudentLessonComplete(StudentPermissionMixin, APIView):

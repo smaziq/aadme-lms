@@ -138,10 +138,17 @@ class StudentLessonAssetSerializer(serializers.ModelSerializer):
 
 class StudentLessonDetailSerializer(serializers.ModelSerializer):
     assets = StudentLessonAssetSerializer(many=True, read_only=True)
+    is_completed = serializers.SerializerMethodField()
 
     class Meta:
         model = Lesson
-        fields = ("id", "title", "order", "body", "links", "assets")
+        fields = ("id", "title", "order", "body", "links", "assets", "is_completed")
+
+    def get_is_completed(self, lesson):
+        student = self.context.get("student")
+        if student is None:
+            return False
+        return LessonCompletion.objects.filter(student=student, lesson=lesson).exists()
 
 
 class LessonCompletionSerializer(serializers.ModelSerializer):

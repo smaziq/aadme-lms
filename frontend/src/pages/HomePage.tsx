@@ -63,7 +63,14 @@ export function HomePage() {
             </ul>
           </div>
         ) : (
-          <p className="muted">Your enrolled courses will appear here in a future update.</p>
+          <div className="admin-home-links">
+            <p className="lead">Learning</p>
+            <ul>
+              <li>
+                <Link to="/courses">My courses</Link>
+              </li>
+            </ul>
+          </div>
         )}
       </main>
     </div>

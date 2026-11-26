@@ -4,9 +4,13 @@ import { AdminRoute } from "./components/AdminRoute";
 import { EnrollPage } from "./pages/admin/EnrollPage";
 import { ProgramDetailPage } from "./pages/admin/ProgramDetailPage";
 import { ProgramsPage } from "./pages/admin/ProgramsPage";
+import { StudentRoute } from "./components/StudentRoute";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { SetPasswordPage } from "./pages/SetPasswordPage";
+import { CourseDetailPage } from "./pages/student/CourseDetailPage";
+import { CoursesPage } from "./pages/student/CoursesPage";
+import { LessonPage } from "./pages/student/LessonPage";
 import "./App.css";
 
 export default function App() {
@@ -39,6 +43,30 @@ export default function App() {
               <AdminRoute>
                 <EnrollPage />
               </AdminRoute>
+            }
+          />
+          <Route
+            path="/courses"
+            element={
+              <StudentRoute>
+                <CoursesPage />
+              </StudentRoute>
+            }
+          />
+          <Route
+            path="/courses/:programId"
+            element={
+              <StudentRoute>
+                <CourseDetailPage />
+              </StudentRoute>
+            }
+          />
+          <Route
+            path="/courses/:programId/lessons/:lessonId"
+            element={
+              <StudentRoute>
+                <LessonPage />
+              </StudentRoute>
             }
           />
           <Route path="*" element={<Navigate to="/" replace />} />
