@@ -1,5 +1,5 @@
 import pytest
-from catalog.models import Program, Module, Lesson, Batch
+from catalog.models import Batch, Lesson, LessonAsset, Module, Program
 
 
 @pytest.mark.django_db
@@ -23,3 +23,19 @@ def test_batch_belongs_to_program():
     program = Program.objects.create(title="P", slug="p")
     batch = Batch.objects.create(program=program, name="Jan 2027")
     assert batch.program_id == program.id
+
+
+@pytest.mark.django_db
+def test_lesson_asset_linked_to_lesson():
+    program = Program.objects.create(title="P", slug="p")
+    module = Module.objects.create(program=program, title="M", order=1)
+    lesson = Lesson.objects.create(module=module, title="L", order=1)
+    asset = LessonAsset.objects.create(
+        lesson=lesson,
+        storage_key="lessons/1/2/notes.pdf",
+        filename="notes.pdf",
+        content_type="application/pdf",
+        size=4,
+    )
+    assert list(lesson.assets.values_list("filename", flat=True)) == ["notes.pdf"]
+    assert asset.lesson_id == lesson.id

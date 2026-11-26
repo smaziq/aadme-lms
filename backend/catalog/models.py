@@ -33,6 +33,15 @@ class Lesson(models.Model):
         ordering = ["order", "id"]
 
 
+class LessonAsset(models.Model):
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name="assets")
+    storage_key = models.CharField(max_length=512)
+    filename = models.CharField(max_length=255)
+    content_type = models.CharField(max_length=127)
+    size = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
 class Batch(models.Model):
     program = models.ForeignKey(Program, on_delete=models.CASCADE, related_name="batches")
     name = models.CharField(max_length=255)
