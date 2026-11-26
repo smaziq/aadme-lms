@@ -94,7 +94,7 @@ def test_unpublished_lesson_not_accessible():
     m = Module.objects.create(program=p, title="M", order=1)
     lesson = Lesson.objects.create(module=m, title="L", order=1, is_published=False)
     res = api.get(f"/api/me/lessons/{lesson.id}/")
-    assert res.status_code in (403, 404)
+    assert res.status_code == 404
 
 
 @pytest.mark.django_db
@@ -112,7 +112,7 @@ def test_mark_complete_idempotent_and_scoped():
     assert r1.data["id"] == r2.data["id"]
     assert LessonCompletion.objects.filter(student=student, lesson=lesson).count() == 1
     denied = other_api.post(f"/api/me/lessons/{lesson.id}/complete/")
-    assert denied.status_code in (403, 404)
+    assert denied.status_code == 404
 
 
 @pytest.mark.django_db
@@ -125,4 +125,26 @@ def test_cross_student_cannot_read_lesson_without_enrollment():
     lesson = Lesson.objects.create(module=m, title="L", order=1, body="secret", is_published=True)
     assert api.get(f"/api/me/lessons/{lesson.id}/").status_code == 200
     denied = other_api.get(f"/api/me/lessons/{lesson.id}/")
-    assert denied.status_code in (403, 404)
+    assert denied.status_code == 404
+
+
+@pytest.mark.django_db
+def test_paused_enrollment_cannot_access_program_or_lesson():
+    api, student = student_client("a@example.com", "A")
+    p = Program.objects.create(title="P", slug="p", is_published=True)
+    Enrollment.objects.create(student=student, program=p, status="paused")
+    m = Module.objects.create(program=p, title="M", order=1)
+    lesson = Lesson.objects.create(module=m, title="L", order=1, body="x", is_published=True)
+    assert api.get(f"/api/me/programs/{p.id}/").status_code == 404
+    assert api.get(f"/api/me/lessons/{lesson.id}/").status_code == 404
+
+
+@pytest.mark.django_db
+def test_cross_student_cannot_read_program_tree():
+    api, student = student_client("a@example.com", "A")
+    other_api, _ = student_client("b@example.com", "B")
+    p = Program.objects.create(title="P", slug="p", is_published=True)
+    Enrollment.objects.create(student=student, program=p, status="active")
+    Module.objects.create(program=p, title="M", order=1)
+    assert api.get(f"/api/me/programs/{p.id}/").status_code == 200
+    assert other_api.get(f"/api/me/programs/{p.id}/").status_code == 404
