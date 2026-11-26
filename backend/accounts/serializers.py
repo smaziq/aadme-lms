@@ -1,7 +1,9 @@
 from django.contrib.auth import authenticate, get_user_model
+from django.utils import timezone
 from rest_framework import serializers
+from rest_framework.authtoken.models import Token
 
-from .models import Student
+from .models import InviteToken, Student
 
 User = get_user_model()
 
@@ -45,3 +47,29 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError("Invalid credentials")
         attrs["user"] = user
         return attrs
+
+
+class SetPasswordSerializer(serializers.Serializer):
+    token = serializers.CharField()
+    password = serializers.CharField(write_only=True, min_length=8)
+
+    def validate(self, attrs):
+        try:
+            invite = InviteToken.objects.select_related("user").get(token=attrs["token"])
+        except InviteToken.DoesNotExist:
+            raise serializers.ValidationError({"token": "Invalid or expired invite token"})
+        if invite.used_at is not None:
+            raise serializers.ValidationError({"token": "This invite has already been used"})
+        if invite.expires_at < timezone.now():
+            raise serializers.ValidationError({"token": "This invite has expired"})
+        attrs["invite"] = invite
+        return attrs
+
+    def save(self, **kwargs):
+        invite = self.validated_data["invite"]
+        user = invite.user
+        user.set_password(self.validated_data["password"])
+        user.save(update_fields=["password"])
+        invite.mark_used()
+        token, _ = Token.objects.get_or_create(user=user)
+        return {"token": token.key, "user": user}

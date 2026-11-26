@@ -1,5 +1,8 @@
+import secrets
+
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
+from django.utils import timezone
 
 
 class UserManager(BaseUserManager):
@@ -48,3 +51,19 @@ class Student(models.Model):
 
     def __str__(self) -> str:
         return self.full_name
+
+
+class InviteToken(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="invite_tokens")
+    token = models.CharField(max_length=64, unique=True, db_index=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @staticmethod
+    def generate_token() -> str:
+        return secrets.token_urlsafe(32)
+
+    def mark_used(self):
+        self.used_at = timezone.now()
+        self.save(update_fields=["used_at"])

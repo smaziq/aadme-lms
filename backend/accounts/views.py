@@ -4,7 +4,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .serializers import LoginSerializer, UserSerializer
+from .serializers import LoginSerializer, SetPasswordSerializer, UserSerializer
 
 
 class LoginView(APIView):
@@ -27,3 +27,15 @@ class LogoutView(APIView):
 class MeView(APIView):
     def get(self, request):
         return Response(UserSerializer(request.user).data)
+
+
+class SetPasswordView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = SetPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        result = serializer.save()
+        return Response(
+            {"token": result["token"], "user": UserSerializer(result["user"]).data}
+        )
