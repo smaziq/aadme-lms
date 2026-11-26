@@ -185,3 +185,63 @@ def test_cross_student_cannot_read_program_tree():
     Module.objects.create(program=p, title="M", order=1)
     assert api.get(f"/api/me/programs/{p.id}/").status_code == 200
     assert other_api.get(f"/api/me/programs/{p.id}/").status_code == 404
+
+@pytest.mark.django_db
+def test_lesson_video_asset_playback_fields(settings, tmp_path):
+    settings.LMS_USE_LOCAL_STORAGE = True
+    settings.MEDIA_ROOT = tmp_path
+    api, student = student_client("v@example.com", "V")
+    p = Program.objects.create(title="P", slug="p-vid", is_published=True)
+    Enrollment.objects.create(student=student, program=p, status="active")
+    m = Module.objects.create(program=p, title="M", order=1)
+    lesson = Lesson.objects.create(module=m, title="L", order=1, is_published=True)
+    key = f"lessons/{p.id}/{lesson.id}/videos/clip.mp4"
+    path = tmp_path / key
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"\x00\x00fake-mp4")
+    asset = LessonAsset.objects.create(
+        lesson=lesson,
+        storage_key=key,
+        filename="clip.mp4",
+        content_type="video/mp4",
+        size=9,
+    )
+    res = api.get(f"/api/me/lessons/{lesson.id}/")
+    assert res.status_code == 200
+    row = res.data["assets"][0]
+    assert row["kind"] == "video"
+    assert row["delivery"] == "mp4_proxy"
+    assert row["playback_url"] == f"/api/me/assets/{asset.id}/stream/"
+    assert row["playback_expires_at"] is None
+    assert row["download_url"] == f"/api/me/assets/{asset.id}/download/"
+
+
+@pytest.mark.django_db
+def test_video_stream_requires_enrollment(settings, tmp_path):
+    settings.LMS_USE_LOCAL_STORAGE = True
+    settings.MEDIA_ROOT = tmp_path
+    api, student = student_client("v@example.com", "V")
+    other, _ = student_client("o@example.com", "O")
+    p = Program.objects.create(title="P", slug="p-stream", is_published=True)
+    Enrollment.objects.create(student=student, program=p, status="active")
+    m = Module.objects.create(program=p, title="M", order=1)
+    lesson = Lesson.objects.create(module=m, title="L", order=1, is_published=True)
+    key = f"lessons/{p.id}/{lesson.id}/videos/clip.mp4"
+    path = tmp_path / key
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"videobytes")
+    asset = LessonAsset.objects.create(
+        lesson=lesson,
+        storage_key=key,
+        filename="clip.mp4",
+        content_type="video/mp4",
+        size=10,
+    )
+    ok = api.get(f"/api/me/assets/{asset.id}/stream/")
+    assert ok.status_code == 200
+    assert b"".join(ok.streaming_content) == b"videobytes"
+    denied = other.get(f"/api/me/assets/{asset.id}/stream/")
+    assert denied.status_code == 404
+    playback = api.get(f"/api/me/assets/{asset.id}/playback/")
+    assert playback.status_code == 200
+    assert playback.data["delivery"] == "mp4_proxy"

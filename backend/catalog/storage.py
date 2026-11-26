@@ -13,6 +13,15 @@ def lesson_asset_key(program_id: int, lesson_id: int, filename: str) -> str:
     return f"lessons/{program_id}/{lesson_id}/{_safe_name(filename)}"
 
 
+def lesson_video_key(program_id: int, lesson_id: int, filename: str) -> str:
+    """Master video path — stable input for a future DIY HLS encoder."""
+    return f"lessons/{program_id}/{lesson_id}/videos/{_safe_name(filename)}"
+
+
+def is_video_content_type(content_type: str | None) -> bool:
+    return bool(content_type) and content_type.lower().startswith("video/")
+
+
 def assignment_upload_key(enrollment_id: int, filename: str) -> str:
     return f"assignments/{enrollment_id}/{_safe_name(filename)}"
 

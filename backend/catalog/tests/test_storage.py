@@ -1,10 +1,23 @@
-from catalog.storage import StorageService, assignment_upload_key, lesson_asset_key
+from catalog.storage import (
+    StorageService,
+    assignment_upload_key,
+    is_video_content_type,
+    lesson_asset_key,
+    lesson_video_key,
+)
 
 
 def test_lesson_asset_key_shape():
     key = lesson_asset_key(3, 9, "Week 1.pdf")
     assert key.startswith("lessons/3/9/")
     assert key.endswith(".pdf")
+
+
+def test_lesson_video_key_and_mime():
+    key = lesson_video_key(3, 9, "Lecture 1.mp4")
+    assert key == "lessons/3/9/videos/Lecture_1.mp4"
+    assert is_video_content_type("video/mp4")
+    assert not is_video_content_type("application/pdf")
 
 
 def test_assignment_prefix_reserved():

@@ -196,3 +196,65 @@ class StudentAssetDownload(StudentPermissionMixin, APIView):
             as_attachment=True,
             filename=asset.filename,
         )
+
+
+class StudentAssetStream(StudentPermissionMixin, APIView):
+    """Inline byte stream for local/dev video playback (`delivery: mp4_proxy`)."""
+
+    def get(self, request, asset_id):
+        from pathlib import Path
+
+        from django.conf import settings
+
+        student = _student_profile(request)
+        asset = _asset_for_student(student, asset_id)
+        if asset is None:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        content_type = (
+            asset.content_type
+            or mimetypes.guess_type(asset.filename)[0]
+            or "application/octet-stream"
+        )
+        if settings.LMS_USE_LOCAL_STORAGE:
+            path = Path(settings.MEDIA_ROOT) / asset.storage_key
+            if not path.is_file():
+                return Response(status=status.HTTP_404_NOT_FOUND)
+            return FileResponse(path.open("rb"), content_type=content_type, as_attachment=False)
+        try:
+            data = StorageService().get_bytes(asset.storage_key)
+        except (FileNotFoundError, OSError):
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        return FileResponse(
+            io.BytesIO(data),
+            content_type=content_type,
+            as_attachment=False,
+        )
+
+
+class StudentAssetPlayback(StudentPermissionMixin, APIView):
+    """Refresh playback descriptor for a video asset (signed URL or stream path)."""
+
+    def get(self, request, asset_id):
+        from learning.serializers import StudentLessonAssetSerializer
+
+        student = _student_profile(request)
+        asset = _asset_for_student(student, asset_id)
+        if asset is None:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        data = StudentLessonAssetSerializer(asset, context={"student": student}).data
+        if data.get("kind") != "video":
+            return Response(
+                {"detail": "Asset is not a video."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(
+            {
+                "id": data["id"],
+                "kind": data["kind"],
+                "delivery": data["delivery"],
+                "playback_url": data["playback_url"],
+                "playback_expires_at": data["playback_expires_at"],
+                "content_type": data["content_type"],
+                "filename": data["filename"],
+            }
+        )

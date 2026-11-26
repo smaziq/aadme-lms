@@ -348,6 +348,30 @@ a:hover {
   font-size: 0.85rem;
 }
 
+.video-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.video-item {
+  margin: 0.75rem 0 1.25rem;
+}
+
+.video-label {
+  margin: 0 0 0.4rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.lesson-video {
+  display: block;
+  width: 100%;
+  max-width: 720px;
+  max-height: 70vh;
+  background: #111;
+  border-radius: 4px;
+}
+
 .file-upload input[type="file"] {
   display: none;
 }

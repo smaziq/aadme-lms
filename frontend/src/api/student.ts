@@ -43,6 +43,10 @@ export type StudentLessonAsset = {
   content_type: string;
   size: number;
   download_url: string;
+  kind: "video" | "file";
+  delivery: "mp4_signed" | "mp4_proxy" | "download" | "hls";
+  playback_url: string | null;
+  playback_expires_at: string | null;
 };
 
 export type LessonLink = {

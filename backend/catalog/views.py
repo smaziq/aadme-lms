@@ -16,7 +16,7 @@ from .serializers import (
     ModuleSerializer,
     ProgramSerializer,
 )
-from .storage import StorageService, lesson_asset_key
+from .storage import StorageService, is_video_content_type, lesson_asset_key, lesson_video_key
 
 
 class AdminPermissionMixin:
@@ -70,7 +70,10 @@ class AdminLessonAssetPresign(AdminPermissionMixin, APIView):
         filename = serializer.validated_data["filename"]
         content_type = serializer.validated_data["content_type"]
         program_id = lesson.module.program_id
-        key = lesson_asset_key(program_id, lesson.id, filename)
+        if is_video_content_type(content_type):
+            key = lesson_video_key(program_id, lesson.id, filename)
+        else:
+            key = lesson_asset_key(program_id, lesson.id, filename)
         upload_url = StorageService().presign_upload(key, content_type)
         return Response({"storage_key": key, "upload_url": upload_url})
 
@@ -120,7 +123,10 @@ class AdminLessonAssetUpload(AdminPermissionMixin, APIView):
         filename = upload.name
         content_type = upload.content_type or "application/octet-stream"
         data = upload.read()
-        key = lesson_asset_key(program_id, lesson.id, filename)
+        if is_video_content_type(content_type):
+            key = lesson_video_key(program_id, lesson.id, filename)
+        else:
+            key = lesson_asset_key(program_id, lesson.id, filename)
         StorageService().put_bytes(key, data, content_type)
         asset = LessonAsset.objects.create(
             lesson=lesson,

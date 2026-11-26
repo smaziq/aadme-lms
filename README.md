@@ -98,6 +98,17 @@ Tests use SQLite and local filesystem storage (`LMS_USE_LOCAL_STORAGE`); they do
 
 Lesson files are streamed from `GET /api/me/assets/{id}/download/` with the student token (works for local storage and S3). The student UI uses this endpoint instead of raw `local://` URLs.
 
+### Lesson video (temporary MP4)
+
+Video uploads (`video/*`) are stored under `lessons/{program}/{lesson}/videos/…` in Supabase. The student lesson API returns a playback descriptor (`kind`, `delivery`, `playback_url`):
+
+- Production (`LMS_USE_LOCAL_STORAGE=0`): `delivery=mp4_signed` — short-lived S3/Supabase GET URL for `<video src>`
+- Local: `delivery=mp4_proxy` — `/api/me/assets/{id}/stream/` fetched with the student token into a blob URL
+
+This is a **temporary** progressive-MP4 path. Planned migration: DIY HLS (ffmpeg → segments in the same bucket → CDN signed access → `hls.js`), swapping `delivery` to `hls` without changing enrollment. See `docs/superpowers/specs/2026-11-26-aadme-lms-video-mp4-hls-seam-design.md`.
+
+**Supabase CORS:** allow your app origin to GET from the storage host so signed playback works in the browser.
+
 ## Deploy on Railway
 
 ```bash

@@ -158,13 +158,77 @@ class StudentProgramTreeSerializer(serializers.ModelSerializer):
 
 class StudentLessonAssetSerializer(serializers.ModelSerializer):
     download_url = serializers.SerializerMethodField()
+    kind = serializers.SerializerMethodField()
+    delivery = serializers.SerializerMethodField()
+    playback_url = serializers.SerializerMethodField()
+    playback_expires_at = serializers.SerializerMethodField()
+
+    PLAYBACK_EXPIRES_IN = 900
 
     class Meta:
         model = LessonAsset
-        fields = ("id", "filename", "content_type", "size", "download_url")
+        fields = (
+            "id",
+            "filename",
+            "content_type",
+            "size",
+            "download_url",
+            "kind",
+            "delivery",
+            "playback_url",
+            "playback_expires_at",
+        )
+
+    def _playback(self, asset):
+        """Return (url, expires_at_iso_or_None) for video assets; cached per instance."""
+        from datetime import timedelta
+
+        from django.conf import settings
+        from django.utils import timezone
+
+        from catalog.storage import StorageService, is_video_content_type
+
+        cache = self.context.setdefault("_playback_cache", {})
+        if asset.id in cache:
+            return cache[asset.id]
+        if not is_video_content_type(asset.content_type):
+            cache[asset.id] = (None, None)
+            return cache[asset.id]
+        if settings.LMS_USE_LOCAL_STORAGE:
+            result = (f"/api/me/assets/{asset.id}/stream/", None)
+        else:
+            url = StorageService().presign_download(
+                asset.storage_key, expires_in=self.PLAYBACK_EXPIRES_IN
+            )
+            expires = timezone.now() + timedelta(seconds=self.PLAYBACK_EXPIRES_IN)
+            result = (url, expires.isoformat())
+        cache[asset.id] = result
+        return result
 
     def get_download_url(self, asset):
         return f"/api/me/assets/{asset.id}/download/"
+
+    def get_kind(self, asset):
+        from catalog.storage import is_video_content_type
+
+        return "video" if is_video_content_type(asset.content_type) else "file"
+
+    def get_delivery(self, asset):
+        from django.conf import settings
+
+        from catalog.storage import is_video_content_type
+
+        if not is_video_content_type(asset.content_type):
+            return "download"
+        if settings.LMS_USE_LOCAL_STORAGE:
+            return "mp4_proxy"
+        return "mp4_signed"
+
+    def get_playback_url(self, asset):
+        return self._playback(asset)[0]
+
+    def get_playback_expires_at(self, asset):
+        return self._playback(asset)[1]
 
 
 class StudentLessonDetailSerializer(serializers.ModelSerializer):

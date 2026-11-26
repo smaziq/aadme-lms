@@ -8,6 +8,7 @@ import {
 } from "../../api/student";
 import { apiDownload } from "../../api/client";
 import { formatApiError, useAuth } from "../../auth/AuthContext";
+import { LessonVideoPlayer } from "../../components/LessonVideoPlayer";
 import { StudentShell } from "../../components/StudentShell";
 
 function isNotFoundError(err: unknown): boolean {
@@ -139,28 +140,51 @@ export function LessonPage() {
             </section>
           )}
 
-          {lesson.assets.length > 0 && (
+          {lesson.assets.some(
+            (a) => (a.kind === "video" || a.content_type?.startsWith("video/")) && a.playback_url,
+          ) &&
+            token && (
+            <section className="admin-section">
+              <h2 className="section-title">Videos</h2>
+              <ul className="asset-list video-list">
+                {lesson.assets
+                  .filter(
+                    (a) =>
+                      (a.kind === "video" || a.content_type?.startsWith("video/")) && a.playback_url,
+                  )
+                  .map((asset) => (
+                    <LessonVideoPlayer key={asset.id} asset={asset} token={token} />
+                  ))}
+              </ul>
+            </section>
+          )}
+
+          {lesson.assets.some(
+            (a) => a.kind !== "video" && !a.content_type?.startsWith("video/"),
+          ) && (
             <section className="admin-section">
               <h2 className="section-title">Downloads</h2>
               <ul className="asset-list">
-                {lesson.assets.map((asset) => (
-                  <li key={asset.id}>
-                    <button
-                      type="button"
-                      className="link-button"
-                      onClick={() => {
-                        if (!token) return;
-                        void apiDownload(asset.download_url, token, asset.filename);
-                      }}
-                    >
-                      {asset.filename}
-                    </button>
-                    <span className="muted list-meta">
-                      {" "}
-                      ({asset.content_type}, {asset.size} bytes)
-                    </span>
-                  </li>
-                ))}
+                {lesson.assets
+                  .filter((a) => a.kind !== "video" && !a.content_type?.startsWith("video/"))
+                  .map((asset) => (
+                    <li key={asset.id}>
+                      <button
+                        type="button"
+                        className="link-button"
+                        onClick={() => {
+                          if (!token) return;
+                          void apiDownload(asset.download_url, token, asset.filename);
+                        }}
+                      >
+                        {asset.filename}
+                      </button>
+                      <span className="muted list-meta">
+                        {" "}
+                        ({asset.content_type}, {asset.size} bytes)
+                      </span>
+                    </li>
+                  ))}
               </ul>
             </section>
           )}
