@@ -59,3 +59,60 @@ def test_asset_complete_after_upload(admin_api, tmp_path, settings):
     )
     assert done.status_code == 201
     assert LessonAsset.objects.filter(lesson_id=lesson["id"], storage_key=key).exists()
+
+
+def _lesson_tree(admin_api):
+    prog = admin_api.post(
+        "/api/admin/programs/", {"title": "P", "slug": "p", "is_published": True}, format="json"
+    ).data
+    mod = admin_api.post(
+        f"/api/admin/programs/{prog['id']}/modules/", {"title": "M", "order": 1}, format="json"
+    ).data
+    lesson = admin_api.post(
+        f"/api/admin/modules/{mod['id']}/lessons/",
+        {"title": "L", "order": 1, "body": "", "is_published": True},
+        format="json",
+    ).data
+    return prog, lesson
+
+
+@pytest.mark.django_db
+def test_asset_complete_without_upload_returns_400(admin_api, tmp_path, settings):
+    settings.LMS_USE_LOCAL_STORAGE = True
+    settings.MEDIA_ROOT = tmp_path
+    prog, lesson = _lesson_tree(admin_api)
+    key = lesson_asset_key(prog["id"], lesson["id"], "missing.pdf")
+    assert LessonAsset.objects.count() == 0
+    res = admin_api.post(
+        f"/api/admin/lessons/{lesson['id']}/assets/complete/",
+        {
+            "storage_key": key,
+            "filename": "missing.pdf",
+            "content_type": "application/pdf",
+            "size": 0,
+        },
+        format="json",
+    )
+    assert res.status_code == 400
+    assert LessonAsset.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_asset_complete_mismatched_storage_key_returns_400(admin_api, tmp_path, settings):
+    settings.LMS_USE_LOCAL_STORAGE = True
+    settings.MEDIA_ROOT = tmp_path
+    prog, lesson = _lesson_tree(admin_api)
+    wrong_key = lesson_asset_key(prog["id"], lesson["id"] + 999, "notes.pdf")
+    StorageService().put_bytes(wrong_key, b"%PDF", "application/pdf")
+    res = admin_api.post(
+        f"/api/admin/lessons/{lesson['id']}/assets/complete/",
+        {
+            "storage_key": wrong_key,
+            "filename": "notes.pdf",
+            "content_type": "application/pdf",
+            "size": 4,
+        },
+        format="json",
+    )
+    assert res.status_code == 400
+    assert not LessonAsset.objects.filter(lesson_id=lesson["id"]).exists()

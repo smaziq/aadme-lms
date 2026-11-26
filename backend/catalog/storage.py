@@ -51,10 +51,19 @@ class StorageService:
 
     def get_bytes(self, key: str) -> bytes:
         if self.local:
-            return self._local_path(key).read_bytes()
+            path = self._local_path(key)
+            if not path.is_file():
+                raise FileNotFoundError(key)
+            return path.read_bytes()
         client = self._s3_client()
-        obj = client.get_object(Bucket=settings.AWS_STORAGE_BUCKET_NAME, Key=key)
-        return obj["Body"].read()
+        try:
+            obj = client.get_object(Bucket=settings.AWS_STORAGE_BUCKET_NAME, Key=key)
+            return obj["Body"].read()
+        except client.exceptions.ClientError as e:
+            code = e.response.get("Error", {}).get("Code", "")
+            if code in ("NoSuchKey", "404", "NotFound"):
+                raise FileNotFoundError(key) from e
+            raise
 
     def presign_upload(self, key: str, content_type: str, expires_in: int = 600) -> str:
         if self.local:

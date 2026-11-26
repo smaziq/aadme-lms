@@ -69,6 +69,13 @@ class AdminLessonAssetComplete(AdminPermissionMixin, APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         storage_key = data["storage_key"]
+        program_id = lesson.module.program_id
+        expected_prefix = f"lessons/{program_id}/{lesson.id}/"
+        if not storage_key.startswith(expected_prefix):
+            return Response(
+                {"detail": "Storage key does not belong to this lesson."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         try:
             StorageService().get_bytes(storage_key)
         except (FileNotFoundError, OSError):
