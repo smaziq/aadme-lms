@@ -77,7 +77,7 @@ Copy examples from the repo root, `backend/.env.example`, and `frontend/.env.exa
 |----------|-------|---------|
 | `DJANGO_SECRET_KEY` | backend | Django secret; required in production |
 | `DATABASE_URL` | backend | Optional Postgres URL (`postgres://...`); unset → SQLite at `backend/db.sqlite3` |
-| `LMS_USE_LOCAL_STORAGE` | backend | `1` (default) stores uploads on disk; `0` uses S3-compatible storage |
+| `LMS_USE_LOCAL_STORAGE` | backend | Defaults to `1` when `DJANGO_DEBUG=1`, else `0`. `1` = local disk; `0` = S3-compatible (required in production) |
 | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_STORAGE_BUCKET_NAME`, `AWS_S3_ENDPOINT_URL`, `AWS_S3_REGION_NAME` | backend | Supabase Storage (S3-compatible) when `LMS_USE_LOCAL_STORAGE=0` |
 | `FRONTEND_BASE_URL` | backend | Base URL for invite/set-password links (default `http://localhost:5173`) |
 | `CORS_ALLOWED_ORIGINS` | backend | Comma-separated browser origins allowed to call the API |
